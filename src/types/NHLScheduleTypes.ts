@@ -14,4 +14,5 @@ export type NHLScheduleGameType = {
 
 export type NHLGameStatusType = {
   statusCode: string;
+  detailedState: string;
 };
