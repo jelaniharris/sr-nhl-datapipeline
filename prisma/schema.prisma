@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id         String   @id @default(uuid())
+  apiId      Int
+  statusCode String   @db.VarChar
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  @@map(name: "games")
+}
+
+model Player {
+  id         String   @id @default(uuid())
+  apiId      Int
+  name       String   @db.VarChar
+  age        Int
+  number     String   @db.VarChar
+  position   String   @db.VarChar
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@map(name: "players")
+}
+
+model GamePlayerStat {
+  game_id         String   @db.VarChar
+  player_id       String   @db.VarChar
+  assists         Int      @default(0)
+  goals           Int      @default(0)
+  hits            Int      @default(0)
+  misses          Int      @default(0)
+  points          Int      @default(0)
+  penalty_minutes Int      @default(0)
+  updated_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([game_id, player_id])
+  @@map(name: "gameplayerstats")
+}
+
+enum GameEventType {
+  UNKNOWN
+  MISS
+  HIT
+  GOAL
+  ASSIST
+  PENALTY
+}
+
+model GameEvent {
+  id           String        @id @default(uuid())
+  game_id      String        @db.VarChar
+  player_id    String        @db.VarChar
+  event_type   GameEventType @default(UNKNOWN)
+  event_index  Int
+  event_amount Int           @default(0)
+  occured_at   DateTime
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
+
+  @@unique([game_id, player_id, event_index])
+  @@map(name: "gameevents")
+}

@@ -1,0 +1,42 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    hostname: postgres
+    ports:
+      - "5430:5432" # Scoot this over a couple ports to help prevent local conflicts
+    env_file: "./.env"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: "rabbitmq"
+    ports:
+      - 5673:5672
+      - 15673:15672
+    networks:
+      - nhl-datapipeline
+  nhl-datapipeline-service:
+    stdin_open: true
+    build:
+      context: "./"
+      dockerfile: Dockerfile
+    command: yarn run start:dev
+    container_name: nhl-datapipeline-service
+    volumes:
+      - "./:/app"
+      - "nhl-datapipeline-node-modules:/app/node_modules"
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "3000:3000"
+      - "5555:5555"
+networks:
+  nhl-datapipeline:
+    driver: bridge
+volumes:
+  postgres-data:
+  nhl-datapipeline-node-modules:
