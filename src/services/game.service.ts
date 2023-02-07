@@ -7,7 +7,7 @@ export class UpdateGameDto implements Prisma.GameUpdateInput {
 
 export class GameService {
   constructor(private prisma: PrismaClient) {}
-  async create(data: any): Promise<Game> {
+  async create(data: Prisma.GameUncheckedCreateInput): Promise<Game> {
     return this.prisma.game.create({
       data: {
         ...data,

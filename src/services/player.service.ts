@@ -11,7 +11,7 @@ export type CreatePlayerDto = {
 export class PlayerService {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: any): Promise<Player> {
+  async create(data: Prisma.PlayerUncheckedCreateInput): Promise<Player> {
     return this.prisma.player.create({
       data: {
         ...data,

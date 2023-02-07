@@ -10,39 +10,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Team {
+  id                         String           @id @default(uuid()) @db.Uuid
+  apiId                      Int              @unique
+  name                       String           @db.VarChar
+  created_at                 DateTime         @default(now())
+  updated_at                 DateTime         @default(now())
+  players                    Player[]
+  home_games                 Game[]           @relation("home")
+  away_games                 Game[]           @relation("away")
+  player_game_player_stats   GamePlayerStat[] @relation("player")
+  opponent_game_player_stats GamePlayerStat[] @relation("opponent")
+
+  @@map(name: "teams")
+}
+
 model Game {
-  id         String   @id @default(uuid())
-  apiId      Int
-  statusCode String   @db.VarChar
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  apiId        Int
+  statusCode   String   @db.VarChar
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now())
+  home_team_id String   @db.Uuid
+  away_team_id String   @db.Uuid
+
+  home_team         Team             @relation(name: "home", fields: [home_team_id], references: [id])
+  away_team         Team             @relation(name: "away", fields: [away_team_id], references: [id])
+  game_player_stats GamePlayerStat[]
+  game_events       GameEvent[]
 
   @@map(name: "games")
 }
 
 model Player {
-  id         String   @id @default(uuid())
-  apiId      Int
-  name       String   @db.VarChar
-  age        Int
-  number     String   @db.VarChar
-  position   String   @db.VarChar
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  updated_at DateTime @default(now()) @db.Timestamp(6)
+  id              String   @id @default(uuid()) @db.Uuid
+  apiId           Int
+  name            String   @db.VarChar
+  age             Int
+  number          String   @db.VarChar
+  position        String   @db.VarChar
+  current_team_id String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  updated_at      DateTime @default(now()) @db.Timestamp(6)
+
+  current_team      Team             @relation(fields: [current_team_id], references: [id])
+  game_player_stats GamePlayerStat[]
+  game_events       GameEvent[]
 
   @@map(name: "players")
 }
 
 model GamePlayerStat {
-  game_id         String   @db.VarChar
-  player_id       String   @db.VarChar
-  assists         Int      @default(0)
-  goals           Int      @default(0)
-  hits            Int      @default(0)
-  misses          Int      @default(0)
-  points          Int      @default(0)
-  penalty_minutes Int      @default(0)
-  updated_at      DateTime @default(now()) @db.Timestamp(6)
+  game_id          String   @db.Uuid
+  player_id        String   @db.Uuid
+  player_team_id   String   @db.Uuid
+  opponent_team_id String   @db.Uuid
+  assists          Int      @default(0)
+  goals            Int      @default(0)
+  hits             Int      @default(0)
+  misses           Int      @default(0)
+  points           Int      @default(0)
+  penalty_minutes  Int      @default(0)
+  updated_at       DateTime @default(now()) @db.Timestamp(6)
+
+  game          Game   @relation(fields: [game_id], references: [id])
+  player        Player @relation(fields: [player_id], references: [id])
+  player_team   Team   @relation(name: "player", fields: [player_team_id], references: [id])
+  opponent_team Team   @relation(name: "opponent", fields: [opponent_team_id], references: [id])
 
   @@unique([game_id, player_id])
   @@map(name: "gameplayerstats")
@@ -58,14 +92,17 @@ enum GameEventType {
 }
 
 model GameEvent {
-  id           String        @id @default(uuid())
-  game_id      String        @db.VarChar
-  player_id    String        @db.VarChar
+  id           String        @id @default(uuid()) @db.Uuid
+  game_id      String        @db.Uuid
+  player_id    String        @db.Uuid
   event_type   GameEventType @default(UNKNOWN)
   event_index  Int
   event_amount Int           @default(0)
   occured_at   DateTime
   created_at   DateTime      @default(now()) @db.Timestamp(6)
+
+  game   Game   @relation(fields: [game_id], references: [id])
+  player Player @relation(fields: [player_id], references: [id])
 
   @@unique([game_id, player_id, event_index])
   @@map(name: "gameevents")

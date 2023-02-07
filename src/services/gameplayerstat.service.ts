@@ -5,16 +5,21 @@ import {
   GamePlayerStat
 } from "prisma/prisma-client";
 
-export type CreateGamePlayerStatDto = {
-  game_id: string;
-  player_id: string;
-  assists: number;
-  goals: number;
-  hits: number;
-  misses: number;
-  points: number;
-  penalty_minutes: number;
-};
+export class CreateGamePlayerStatDto
+  implements Prisma.GamePlayerStatUncheckedCreateInput
+{
+  game_id!: string;
+  player_id!: string;
+  player_team_id!: string;
+  opponent_team_id!: string;
+  assists?: number | undefined;
+  goals?: number | undefined;
+  hits?: number | undefined;
+  misses?: number | undefined;
+  points?: number | undefined;
+  penalty_minutes?: number | undefined;
+  updated_at?: string | Date | undefined;
+}
 
 export type UpsertGamePlayerStatDto = {
   createData: Prisma.GamePlayerStatUncheckedCreateInput;

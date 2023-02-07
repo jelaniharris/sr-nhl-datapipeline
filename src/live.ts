@@ -11,6 +11,6 @@ const gameWatcher = new GameWatcher();
 
 (async () => {
   await gameWatcher.getGame(gameApiId);
-  console.log("We're done with: ", gameApiId);
+  console.log("We're done with: #", gameApiId);
   process.exit();
 })();

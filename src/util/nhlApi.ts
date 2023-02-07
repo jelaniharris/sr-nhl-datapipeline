@@ -45,11 +45,11 @@ export const NHLApi = class {
     const currentDate = format(new Date(), "yyyy-MM-dd");
     //"/api/v1/schedule?startDate=2022-02-01&endDate=2022-02-03"
 
+    console.log(new Date(), currentDate);
+
     // Append the current date to get pre-season games
     const responseData = await axios
-      .get(
-        process.env.NHL_API_URL_BASE + `/api/v1/schedule?date=${currentDate}`
-      )
+      .get(process.env.NHL_API_URL_BASE + `/api/v1/schedule`)
       .then((response) => {
         if (response.data) {
           return response.data;

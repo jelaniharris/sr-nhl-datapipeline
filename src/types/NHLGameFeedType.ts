@@ -22,16 +22,23 @@ export type NHLGamePlayType = {
   };
 };
 
+export type NHLGameTeamType = {
+  id: number;
+  name: string;
+};
+
+export type NHLGameFeedTeamsType = {
+  away: NHLGameTeamType;
+  home: NHLGameTeamType;
+};
+
 export type NHLGameFeedType = {
   gameData: {
     game: {
       pk: number;
       season: string;
     };
-    teams: {
-      away: { id: number; name: string };
-      home: { id: number; name: string };
-    };
+    teams: NHLGameFeedTeamsType;
     status: NHLGameStatusType;
     players: NHLPlayersObjectType;
   };
