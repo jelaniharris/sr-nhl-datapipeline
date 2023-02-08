@@ -22,9 +22,7 @@ services:
       - "nhl-datapipeline-node-modules:/app/node_modules"
     depends_on:
       - postgres
-      - rabbitmq
     ports:
-      - "3000:3000"
       - "5555:5555"
 networks:
   nhl-datapipeline:
