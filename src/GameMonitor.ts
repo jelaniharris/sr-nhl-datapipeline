@@ -23,8 +23,9 @@ const GameMonitor = class {
   private async _spawnGameWatcher(gameId: number) {
     // Check if the monitored game does not exist
     if (!this.monitoredGamesProcesses[gameId]) {
+      // Create a forked subprocess that runs the watcher
       console.log("Spawning subprocess for: ", gameId);
-      let GameProcessPath = path.resolve(__dirname + "/live.ts");
+      let GameProcessPath = path.resolve(__dirname + "/watch.ts");
       let child = fork(GameProcessPath, [`${gameId}`], {
         stdio: ["inherit", "inherit", "inherit", "ipc"],
         execArgv: ["-r", "ts-node/register"]
@@ -36,23 +37,21 @@ const GameMonitor = class {
         delete this.monitoredGamesProcesses[gameId];
       });
 
+      // Add the child process to our list of monitored games
       this.monitoredGamesProcesses[gameId] = child;
-    } else {
-      console.log("Process already exists for game: ", gameId);
     }
   }
 
   async checkForLiveGames() {
     const currentGames = await NHLApi.getCurrentGames();
+    console.log("Searching for live games ....", new Date());
     if (currentGames) {
       currentGames.dates.forEach((dateEntry: NHLScheduleDateType) => {
         // Then for each game in each date, check to see if it's live
         dateEntry.games.forEach((gameEntry: NHLScheduleGameType) => {
           console.log(
-            "Games #",
-            gameEntry.gamePk,
-            gameEntry.status.detailedState,
-            gameEntry.link
+            `Game #${gameEntry.gamePk} is ${gameEntry.status.detailedState}`,
+            `${process.env.NHL_API_URL_BASE}${gameEntry.link}`
           );
 
           // Code 3 or 4 is considered live

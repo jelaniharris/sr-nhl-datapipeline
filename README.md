@@ -31,6 +31,10 @@ I use Jest to do unit testing. You can run the tests with
 $ npm run test
 ```
 
+## Prisma Studio
+
+Once the app is running, you can go to `http://localhost:5555` to look at the data and layout using Prisma Studio.
+
 ## Invidual Past Games
 
 Because the process that waits for the live games to start, and the process that injests the game data are two separate scripts. You have the ability to run a past game through the
@@ -52,4 +56,4 @@ Replace [GAMEID] with the id of the game e.g. 2022020804
 
 ## Schema
 
-~[Database Schema](/images/db-schema.png?raw=true "DB Schema")
+![Database Schema](/images/db-schema.png?raw=true "DB Schema")

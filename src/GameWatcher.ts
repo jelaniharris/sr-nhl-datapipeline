@@ -1,19 +1,22 @@
-import { PrismaClient } from "@prisma/client";
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { GameStatusLiveCodes } from "./GameMonitor";
 import { GameProcessor } from "./GameProcessor";
 
 const GameWatcher = class {
-  prisma: PrismaClient;
   gameApiId: number;
   gameProcessor: GameProcessor;
 
   constructor() {
-    this.prisma = new PrismaClient();
     this.gameApiId = 0;
-
-    this.gameProcessor = new GameProcessor(this.prisma);
+    this.gameProcessor = new GameProcessor();
   }
 
+  /**
+   * Starts the process for checking a game for updates
+   * @param gameApiId number
+   */
   async getGame(gameApiId: number) {
     // Assign the game api id that we're using
     this.gameApiId = gameApiId;
@@ -21,11 +24,13 @@ const GameWatcher = class {
 
     // Wait for the game to end
     await this.checkForUpdates();
-    console.log("Completed watching game: #", gameApiId);
 
-    return new Promise((r) => setTimeout(r, 1000));
+    console.log("Completed watching game: #", gameApiId);
   }
 
+  /**
+   * Runs the game processor until the game is finished.
+   */
   async checkForUpdates() {
     let watchingGame = true;
 
@@ -40,14 +45,17 @@ const GameWatcher = class {
         );
         // If the game is still live
         if (GameStatusLiveCodes.includes(gameStatusCode)) {
-          console.log("Game is still live");
+          console.log(`Game ${this.gameApiId} is still live`);
           // Wait some time before trying again
-          await new Promise((r) => setTimeout(r, 8000));
+          await new Promise((r) =>
+            setTimeout(r, Number(process.env.NHL_API_LIVE_POLL_RATE))
+          );
         } else {
-          console.log("Game is no longer live");
+          console.log(`Game ${this.gameApiId} is no longer live`);
           watchingGame = false;
         }
       } catch (e) {
+        // Make sure we leave the game watch loop on an error
         console.error(e);
         watchingGame = false;
       }

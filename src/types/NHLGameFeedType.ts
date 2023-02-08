@@ -1,5 +1,4 @@
-import { NHLPlayersObjectType, NHLPlayerType } from "./NHLPlayerType";
-import { NHLGameStatusType } from "./NHLScheduleTypes";
+import { NHLPlayersObjectType } from "./NHLPlayerType";
 
 export type NHLGamePlayPlayerType = {
   player: {
@@ -44,7 +43,12 @@ export type NHLGameFeedType = {
   };
   liveData: {
     plays: {
-      allPlays: NHLGamePlayType[];
+      allPlays?: NHLGamePlayType[];
     };
   };
+};
+
+export type NHLGameStatusType = {
+  statusCode: string;
+  detailedState: string;
 };

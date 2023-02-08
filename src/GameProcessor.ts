@@ -1,8 +1,7 @@
-import { NHLGameStatusType } from "./types/NHLScheduleTypes";
 import {
   NHLGameFeedTeamsType,
   NHLGameFeedType,
-  NHLGamePlayType,
+  NHLGameStatusType,
   NHLGameTeamType
 } from "./types/NHLGameFeedType";
 import { NHLPlayersObjectType, NHLPlayerType } from "./types/NHLPlayerType";
@@ -12,7 +11,7 @@ import {
   CreateGamePlayerStatDto,
   GamePlayerStatService
 } from "./services/gameplayerstat.service";
-import { Game, Player, PrismaClient, Team } from "@prisma/client";
+import { Game, Player, Team } from "@prisma/client";
 import { NHLApi } from "./util/nhlApi";
 import { NHLTeamType } from "./types/NHLTypes";
 import { TeamService } from "./services/team.service";
@@ -29,7 +28,7 @@ export class GameProcessor {
   teamService: TeamService;
   gamePlayerStatCalculator: GamePlayerStatCalculator;
 
-  constructor(prisma: PrismaClient) {
+  constructor() {
     this.playerService = new PlayerService(PrismaService);
     this.gameService = new GameService(PrismaService);
     this.teamService = new TeamService(PrismaService);
@@ -52,11 +51,10 @@ export class GameProcessor {
   ): Promise<Game> {
     const foundGameData = await this.gameService.findOneByApiId(gamePk);
     if (foundGameData) {
-      console.log("Found existing game entry");
       return foundGameData;
     }
 
-    console.log("Creating new game entry");
+    console.log("Creating new game entry: ", gamePk);
 
     // Ensure away team exists
     const awayTeam = await this.ensureTeamExists(teams.away);
@@ -95,14 +93,20 @@ export class GameProcessor {
     });
   }
 
-  async findOrCreatePlayer(playerData: NHLPlayerType) {
+  /**
+   * Finds a player in the database or creates it, returns the player found or made.
+   * @param playerData NHLPlayerType
+   * @returns Promise<Player>
+   */
+  async findOrCreatePlayer(playerData: NHLPlayerType): Promise<Player> {
     const foundPlayerData = await this.playerService.findOneByApiId(
       playerData.id
     );
     if (foundPlayerData) {
       return foundPlayerData;
     }
-    console.log("Creating player: ", playerData.id);
+
+    console.log("Creating new player: ", playerData.id);
 
     const currentTeam = await this.ensureTeamExists(playerData.currentTeam);
     if (!currentTeam) {
@@ -135,19 +139,21 @@ export class GameProcessor {
     let playerTeamId: string = "";
     let opponentTeamId: string = "";
 
+    // Check that we have valid away team data
     if (!teams.awayTeamData) {
       throw new Error(
         `Cannot make game player stat with unknown away team data`
       );
     }
 
+    // Check that we have valid home team data
     if (!teams.homeTeamData) {
       throw new Error(
         `Cannot make game player stat with unknown home team data`
       );
     }
 
-    // Determine team
+    // Determine team - it's a bit crunchy
     if (playerData.current_team_id == teams.awayTeamData?.id) {
       playerTeamId = teams.awayTeamData?.id;
       opponentTeamId = teams.homeTeamData?.id;
@@ -169,6 +175,7 @@ export class GameProcessor {
       opponent_team_id: opponentTeamId
     };
 
+    // Create or update the aggregate stat in the database
     await this.gamePlayerStatService.upsert({
       createData: {
         ...newStat
@@ -185,6 +192,11 @@ export class GameProcessor {
     });
   }
 
+  /**
+   * Ensures that a game exists in the database by finding or making it
+   * @param data NHLGameFeedType
+   * @returns Promise<Game | null>
+   */
   async ensureGameExists(data: NHLGameFeedType): Promise<Game | null> {
     // Ensure game db entry exists
     return this.findOrCreateGame(
@@ -194,15 +206,34 @@ export class GameProcessor {
     );
   }
 
+  /**
+   * Ensures that a team exists by finding or making it
+   * @param data NHLTeamType
+   * @returns Promise<Team | null>
+   */
   async ensureTeamExists(data: NHLTeamType): Promise<Team | null> {
     // Ensures a team entry exists
     return this.findOrCreateTeam(data);
   }
 
-  async ensurePlayersExists(playersData: NHLPlayersObjectType) {
+  /**
+   * Ensures that a player exists for finding it or making it
+   * @param playersData NHLPlayersObjectType
+   * @returns Promise<Player[]>
+   */
+  async ensurePlayersExists(
+    playersData: NHLPlayersObjectType
+  ): Promise<Player[]> {
     let playerList: Player[] = [];
+
+    // Get the list of players from the player data
+    // It's in an odd format in which  it's not in an array, but an object.
+    // The key to index each player data isn't a type but a hash of the ID
+    // e.g. [{"ID8482093": {id,name,currentAge,...}, {"ID8481481": ...}}]
     const playerArray = Object.keys(playersData);
+
     for (const playerKey of playerArray) {
+      // Use key to get the value of the data
       const playerData = playersData[playerKey];
       const createdPlayer = await this.findOrCreatePlayer(playerData);
       if (createdPlayer) {
@@ -212,6 +243,12 @@ export class GameProcessor {
     return playerList;
   }
 
+  /**
+   * Given a game id, processes the data from the api feed.
+   * Also updates the game db with the current game status at the end
+   * @param apiGameId
+   * @returns Promise<string>
+   */
   async processLiveGame(apiGameId: number): Promise<string> {
     const data = await NHLApi.getLiveGameFeed(apiGameId);
 
@@ -236,22 +273,28 @@ export class GameProcessor {
       data.gameData.players
     );
 
-    // Go through all of the players and gather data about the stats per player
-    const playerStats = await this.gamePlayerStatCalculator.getPlayerStats(
-      data.liveData.plays.allPlays
-    );
-
-    for (const [playerId, stat] of playerStats) {
-      // Find apiId in our list of players in this game
-      const playerData = playerList.find((pl) => pl.apiId === playerId);
-      if (playerData) {
-        // Generate the entry for this player, in this game
-        await this.generateGamePlayerStatData(
-          gameData.id,
-          playerData,
-          stat,
-          teamData
+    // If this game has plays
+    if (data.liveData.plays.allPlays) {
+      // Go through all of the players and gather data about the stats per player
+      const playerStats: Map<number, PlayerStatType> =
+        await this.gamePlayerStatCalculator.getPlayerStats(
+          data.liveData.plays.allPlays
         );
+
+      // Go through all of the stats
+      // This could probably be parallel with Promise.all
+      for (const [playerId, stat] of playerStats) {
+        // Find apiId in our list of players in this game
+        const playerData = playerList.find((pl) => pl.apiId === playerId);
+        if (playerData) {
+          // Generate the entry for this player in this game
+          await this.generateGamePlayerStatData(
+            gameData.id,
+            playerData,
+            stat,
+            teamData
+          );
+        }
       }
     }
 
@@ -261,6 +304,7 @@ export class GameProcessor {
       where: { id: gameData.id }
     });
 
+    // Return the current status of this game
     return data.gameData.status.statusCode;
   }
 }

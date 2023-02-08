@@ -5,12 +5,12 @@ if (process.argv.length === 2) {
   process.exit(1);
 }
 
+// Parse the second parameter as the id of the game to watch
 const gameApiId: number = parseInt(process.argv[2], 10);
 
 const gameWatcher = new GameWatcher();
 
 (async () => {
   await gameWatcher.getGame(gameApiId);
-  console.log("We're done with: #", gameApiId);
   process.exit();
 })();
