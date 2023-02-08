@@ -16,6 +16,8 @@ COPY tsconfig.json ./
 # COPY
 COPY . .
 
+# Install node modules
 RUN npm install
+RUN npm install -g ts-node
 
 RUN npx prisma generate
