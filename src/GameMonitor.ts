@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { ChildProcess, fork } from "child_process";
-import { PrismaClient } from "prisma/prisma-client";
 
 import {
   NHLScheduleDateType,
@@ -16,11 +15,9 @@ export const GameStatusFinalCodes = ["6", "7"];
 
 const GameMonitor = class {
   monitoredGamesProcesses: ChildProcess[];
-  prisma: PrismaClient;
 
   constructor() {
     this.monitoredGamesProcesses = [];
-    this.prisma = new PrismaClient();
   }
 
   private async _spawnGameWatcher(gameId: number) {

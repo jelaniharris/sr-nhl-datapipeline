@@ -1,4 +1,5 @@
-import { Player, PrismaClient } from "prisma/prisma-client";
+import { Player } from "prisma/prisma-client";
+import PrismaService from "./libs/prisma";
 import { PlayerService } from "./services/player.service";
 import { NHLGamePlayType } from "./types/NHLGameFeedType";
 
@@ -13,14 +14,11 @@ export type PlayerStatType = {
 
 export class GamePlayerStatCalculator {
   playerService: any;
-  prisma: PrismaClient;
   playerStats: Map<number, PlayerStatType>;
 
-  constructor(prisma: PrismaClient) {
-    this.prisma = prisma;
+  constructor() {
     this.playerStats = new Map<number, PlayerStatType>();
-
-    this.playerService = new PlayerService(this.prisma);
+    this.playerService = new PlayerService(PrismaService);
   }
 
   async findPlayersByPlayerType(

@@ -9,10 +9,6 @@ import { NHLPlayersObjectType, NHLPlayerType } from "./types/NHLPlayerType";
 import { PlayerService } from "./services/player.service";
 import { GameService } from "./services/game.service";
 import {
-  CreateGameEventDto,
-  GameEventService
-} from "./services/gameevent.service";
-import {
   CreateGamePlayerStatDto,
   GamePlayerStatService
 } from "./services/gameplayerstat.service";
@@ -24,25 +20,22 @@ import {
   GamePlayerStatCalculator,
   PlayerStatType
 } from "./GamePlayerStatCalculator";
+import PrismaService from "./libs/prisma";
 
 export class GameProcessor {
-  prisma: PrismaClient;
   playerService: PlayerService;
   gameService: GameService;
-  gameEventService: GameEventService;
   gamePlayerStatService: GamePlayerStatService;
   teamService: TeamService;
   gamePlayerStatCalculator: GamePlayerStatCalculator;
 
   constructor(prisma: PrismaClient) {
-    this.prisma = prisma;
-    this.playerService = new PlayerService(this.prisma);
-    this.gameService = new GameService(this.prisma);
-    this.gameEventService = new GameEventService(this.prisma);
-    this.teamService = new TeamService(this.prisma);
-    this.gamePlayerStatService = new GamePlayerStatService(this.prisma);
+    this.playerService = new PlayerService(PrismaService);
+    this.gameService = new GameService(PrismaService);
+    this.teamService = new TeamService(PrismaService);
+    this.gamePlayerStatService = new GamePlayerStatService(PrismaService);
 
-    this.gamePlayerStatCalculator = new GamePlayerStatCalculator(this.prisma);
+    this.gamePlayerStatCalculator = new GamePlayerStatCalculator();
   }
 
   /**
@@ -139,11 +132,6 @@ export class GameProcessor {
     stat: PlayerStatType,
     teams: { awayTeamData: Team | null; homeTeamData: Team | null }
   ) {
-    /*const livePlayerStat = await this.gameEventService.getStats(
-      gameId,
-      playerId
-    );*/
-
     let playerTeamId: string = "";
     let opponentTeamId: string = "";
 
@@ -181,34 +169,6 @@ export class GameProcessor {
       opponent_team_id: opponentTeamId
     };
 
-    /*for (const playerStat in livePlayerStat) {
-      const gamePlayerStat = livePlayerStat[playerStat];
-
-      // aggregate data from groups when using a raw query in prisma
-      // returns numeric values as a bigint. This is weird.
-      // e.g. {event_type: "HIT", total: 2n, amount: 0n}
-      switch (gamePlayerStat.event_type) {
-        case "HIT":
-          newStat.hits = Number(gamePlayerStat.total);
-          break;
-        case "MISS":
-          newStat.misses = Number(gamePlayerStat.total);
-          break;
-        case "GOAL":
-          newStat.goals = Number(gamePlayerStat.total);
-          break;
-        case "ASSIST":
-          newStat.assists = Number(gamePlayerStat.total);
-          break;
-        case "PENALTY":
-          newStat.penalty_minutes = Number(gamePlayerStat.amount);
-          break;
-      }
-    }
-
-    // Get a point total from goals and assists
-    newStat.points = newStat.goals + newStat.assists;*/
-
     await this.gamePlayerStatService.upsert({
       createData: {
         ...newStat
@@ -223,103 +183,6 @@ export class GameProcessor {
         }
       }
     });
-  }
-
-  async parseGameEvents(play: NHLGamePlayType, gameId: string) {
-    const findPlayerType = async (
-      desiredPlayerType: string
-    ): Promise<Player | null> => {
-      const foundPlayer = play.players?.find(
-        (player) => player.playerType === desiredPlayerType
-      );
-
-      if (foundPlayer) {
-        return this.playerService.findOneByApiId(foundPlayer.player.id);
-      }
-
-      return null;
-    };
-
-    let parsedEvents: CreateGameEventDto[] = [];
-
-    let newEvent: CreateGameEventDto = {
-      event_type: "UNKNOWN",
-      event_index: play.about.eventIdx,
-      event_amount: 0,
-      player_id: "",
-      game_id: gameId,
-      occured_at: new Date(play.about.dateTime)
-    };
-    switch (play.result.eventTypeId) {
-      case "MISSED_SHOT":
-        newEvent = {
-          ...newEvent,
-          event_type: "MISS"
-        };
-        const shootingPlayer = await findPlayerType("Shooter");
-        if (shootingPlayer) {
-          newEvent.player_id = shootingPlayer.id;
-          parsedEvents.push(newEvent);
-        }
-        //Shooter
-        //Unknown?
-        break;
-      case "HIT":
-        newEvent = {
-          ...newEvent,
-          event_type: "HIT"
-        };
-        const hitPlayer = await findPlayerType("Hitter");
-        if (hitPlayer) {
-          newEvent.player_id = hitPlayer.id;
-          parsedEvents.push(newEvent);
-        }
-        break;
-      case "GOAL":
-        // Give credit to scorer
-        const scoreEvent = {
-          ...newEvent,
-          event_type: "GOAL"
-        };
-        const scoringPlayer = await findPlayerType("Scorer");
-        if (scoringPlayer) {
-          scoreEvent.player_id = scoringPlayer.id;
-          parsedEvents.push(scoreEvent);
-        }
-
-        // Then give assits to all of the other players with assists
-        if (play.players) {
-          for (const player of play.players) {
-            if (player.playerType === "Assist") {
-              const assistEvent = {
-                ...newEvent,
-                event_type: "ASSIST"
-              };
-              const assistPlayer = await this.playerService.findOneByApiId(
-                player.player.id
-              );
-              if (assistPlayer) {
-                assistEvent.player_id = assistPlayer.id;
-                parsedEvents.push(assistEvent);
-              }
-            }
-          }
-        }
-        break;
-      case "PENALTY":
-        newEvent = {
-          ...newEvent,
-          event_type: "PENALTY"
-        };
-        const penaltyOnPlayer = await findPlayerType("PenaltyOn");
-        if (penaltyOnPlayer) {
-          newEvent.player_id = penaltyOnPlayer.id;
-          newEvent.event_amount = play.result.penaltyMinutes;
-          parsedEvents.push(newEvent);
-        }
-        break;
-    }
-    return parsedEvents;
   }
 
   async ensureGameExists(data: NHLGameFeedType): Promise<Game | null> {
@@ -391,32 +254,6 @@ export class GameProcessor {
         );
       }
     }
-    //console.log(playerStats);
-
-    // Go through all of the plays
-    /*const plays: NHLGamePlayType[] = data.liveData.plays.allPlays;
-    for (const play of plays) {
-
-      const newGameEvents = await this.parseGameEvents(play, gameData.id);
-      for (const gameEvent of newGameEvents) {
-        // Check to see if this event already exists
-        const foundEvent = await this.gameEventService.findOne({
-          game_id: gameEvent.game_id,
-          player_id: gameEvent.player_id,
-          event_index: gameEvent.event_index
-        });
-
-        // Even not found, then create it
-        if (!foundEvent) {
-          await this.gameEventService.create(gameEvent);
-        }
-      }
-    }*/
-
-    // Update each player's aggregate stats
-    /*for (const id of playerListIds) {
-      //await this.generateGamePlayerStatLiveData(gameData.id, id);
-    }*/
 
     // Update game data entry with retrieved status code
     await this.gameService.update({
