@@ -10,14 +10,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: "rabbitmq"
-    ports:
-      - 5673:5672
-      - 15673:15672
-    networks:
-      - nhl-datapipeline
   nhl-datapipeline-service:
     stdin_open: true
     build:
