@@ -3,5 +3,9 @@ import GameMonitor from "./GameMonitor";
 const gameMonitor = new GameMonitor();
 gameMonitor.checkForLiveGames();
 setInterval(() => {
-  gameMonitor.checkForLiveGames();
+  try {
+    gameMonitor.checkForLiveGames();
+  } catch (e) {
+    console.log(e);
+  }
 }, 60000);

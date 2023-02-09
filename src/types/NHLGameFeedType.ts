@@ -9,7 +9,7 @@ export type NHLGamePlayPlayerType = {
 };
 
 export type NHLGamePlayType = {
-  players?: [NHLGamePlayPlayerType];
+  players?: NHLGamePlayPlayerType[];
   result: {
     eventTypeId: string;
     penaltySeverity: string;

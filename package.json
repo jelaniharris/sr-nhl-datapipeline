@@ -9,8 +9,7 @@
     "build": "rimraf ./build && tsc",
     "start": "npm run build && node build/index.js",
     "lint": "eslint . --ext .ts",
-    "lintfix": "eslint . --ext .ts --fix",
-    "studio": "docker-compose run nhl-datapipeline-service npx prisma studio"
+    "lintfix": "eslint . --ext .ts --fix"
   },
   "repository": {
     "type": "git",
@@ -25,6 +24,7 @@
   "homepage": "https://github.com/jelaniharris/sr-nhl-datapipeline#readme",
   "devDependencies": {
     "@types/jest": "^29.4.0",
+    "@types/jest-when": "^3.5.2",
     "@types/node": "^18.11.18",
     "@typescript-eslint/eslint-plugin": "^5.50.0",
     "@typescript-eslint/parser": "^5.50.0",
@@ -32,6 +32,8 @@
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
     "jest": "^29.4.1",
+    "jest-mock-extended": "^3.0.1",
+    "jest-when": "^3.5.2",
     "nodemon": "^2.0.20",
     "prettier": "^2.8.3",
     "prisma": "^4.9.0",
